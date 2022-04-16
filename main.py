@@ -7,7 +7,6 @@
 
 from cmu_112_graphics import *
 import math, copy, os, random
-import game, startScreen
 import pygame #Used for Sound
 
 ##########################################
@@ -47,11 +46,12 @@ def startScreenMode_mousePressed(app, event):
 # Game Mode
 ##########################################
 
-def checkCarCollions(app):
+def checkCarCollions():
     pass
 
 class Car:
     def __init__(self, width, center):
+        self.racing = False
         self.width = width
         self.height = width * 2
         self.x = center[0]
@@ -63,9 +63,13 @@ class Car:
         self.ogCoords = self.getCoords()
         self.coords = self.getCoords()
         self.lives = 3
-
-    def getBounds(app):
-        pass
+    
+    def checkOnRoad(self, app):
+        for x in self.getCoords():
+            if (x[0] < app.width/2 - app.track.width/2
+                or x[0] > app.width/2 + app.track.width/2):
+                return False
+        return True
 
     def getCoords(self):
         top_left = [self.x - self.width, self.y - self.height]
@@ -113,24 +117,59 @@ class Car:
         canvas.create_polygon(top_left[0], top_left[1], top_right[0], top_right[1],
                             bottom_right[0], bottom_right[1], 
                             bottom_left[0], bottom_left[1], fill=self.color)
+        canvas.create_oval(self.x - 2, self.y - 2, self.x + 2, self.y + 2,
+                            fill="white")
 
 class AICar(Car):
-    pass
+    def race(self, app):
+        self.racing = True
+        if app.player.x <= self.x:
+            self.x -= 100
+
+    def draw(self, canvas):
+        top_left = self.coords[0]
+        top_right = self.coords[1]
+        bottom_right = self.coords[2]
+        bottom_left = self.coords[3]
+        canvas.create_polygon(top_left[0], top_left[1], top_right[0], top_right[1],
+                            bottom_right[0], bottom_right[1], 
+                            bottom_left[0], bottom_left[1], fill=self.color)
     
 class Track():
-    def __init__(self, app, type, road_color, background_color, coords):
+    def __init__(self, app, type, road_color, background_color, coords, width):
         self.type = type
         self.road = road_color
         self.background = background_color
-        # self.length = len(coords)
+        self.length = len(coords)
+        self.width = width
         # self.top_corner = [0, app.height - self.length]
         self.bottom_corner = [app.width, app.height]
-        self.coords = coords
+        self.coords = self.convertCoords(app, coords)
         pass
 
     def convertCoords(self, app, coords):
-        newCoords = coords
-        return newCoords
+        if app.customHeight == None:
+            pass
+        else:
+            newCoords = []
+            i = 0
+            while i < len(coords) - 1:
+                x = (((abs((app.width/app.customHeight)/2) -
+                    abs(coords[0] - app.width/2))/(app.width/app.customHeight))
+                    * app.width)
+                print(x)
+                y = coords[i+1]
+                newCoords.append(x)
+                newCoords.append(y)
+                i += 2
+            return newCoords
+        return coords
+    
+    def end(self, app):
+        if self.coords[len(self.coords) - 1] > app.height/2:
+            return False
+        else:
+            return True
 
     def generate(self, list):
         pass
@@ -142,17 +181,17 @@ class Track():
             i += 2
 
     def draw(self, app, canvas):
-        canvas.create_rectangle(0, -100 - app.scrollY, app.width, app.height, fill= self.background)
-        canvas.create_line(self.coords, width=200)
-        canvas.create_line(self.coords, fill="yellow", dash=(6,6))
-        pass
+        canvas.create_rectangle(0, app.height - self.length + app.scrollY,
+                                 app.width, app.height, 
+                                fill= self.background)
+        canvas.create_line(self.coords, width=self.width)
+        canvas.create_line(self.coords, fill="yellow", dash=(5,5), width=self.width/50)
 
-def gameMode(app):
-    print("works")
 
 def gameMode_redrawAll(app, canvas):
     app.track.draw(app, canvas)
     app.player.draw(canvas)
+    app.ai.draw(canvas)
 
 def gameMode_keyPressed(app, event):
     if event.key == "Right":
@@ -163,16 +202,20 @@ def gameMode_keyPressed(app, event):
     if event.key.lower() == "p":
         app.mode = 'startScreenMode'
     if event.key == "Up":
-        app.scrollY -= 10
+        app.scrollY += 30
     if event.key == "Down":
         app.player.move(-20, app)
     pass
 
 def gameMode_timerFired(app):
+    app.ai.race(app)
     app.player.move(20, app, None)
     app.track.moveCoords(app)
-    app.scrollY -= 10
-    pass
+    if not app.track.end(app):
+        app.scrollY += 8
+    if not app.player.checkOnRoad(app):
+        app.player.life -= 1
+        print("Crash")
 
 ##########################################
 # Course Builder
@@ -192,6 +235,7 @@ def checkErrors(app):
     return False
 
 def courseBuilderMode_redrawAll(app, canvas):
+    canvas.create_rectangle(0, 0, app.width, app.height, fill="green")
     if app.customHeight != None:
         canvas.create_rectangle(app.width/2 + app.incWidth, 0, app.width/2 - app.incWidth
                                 , app.height, fill='beige')
@@ -208,13 +252,14 @@ def courseBuilderMode_mousePressed(app, event):
         if checkErrors(app):     
             app.tempTrack = []
             app.message = 'This track is invalid, try again'
-    pass
 
 def courseBuilderMode_keyPressed(app, event):
     if event.key == "Up":
         app.tempLineWidth += 5
     if event.key == "Down":
         app.tempLineWidth -= 5
+    if event.key.lower() == "s":
+        app.mode = "startScreenMode"
 
 def courseBuilderMode_timerFired(app):
     if app.customHeight == None:
@@ -229,17 +274,13 @@ def courseBuilderMode_timerFired(app):
 # Main App
 ##########################################
 
-def genAi(app, num):
-    ai = {}
-    for i in range(0, num):
-        string = "car" + str(num)
-        ai[string] = AICar(app.carWidth, [app.carX, app.carY])
-    return ai
-
 def genStraightTrack(app):
     trackCoords = []
     width = app.width/2
-    for i in range(app.height*4):
+    for i in range(-app.height*10, 0):
+        trackCoords.append(width)
+        trackCoords.append(i)
+    for i in range(app.height):
         trackCoords.append(width)
         trackCoords.append(i)
     return trackCoords
@@ -251,17 +292,17 @@ def appStarted(app):
     app.carX = app.width / 2
     app.carY = app.height / 2
     app.carWidth = 10
-    app.player = Car(app.carWidth, [app.carX, app.carY])
-    app.ai = genAi(app, 3)
-    app.testTrack = genStraightTrack(app)
-    app.track = Track(app, "test", "blue", "teal", app.testTrack)
-    app.tracks = []
-    app.tempTrack = []
-    app.tempLineWidth = 20
     app.customHeight = None
+    app.tempLineWidth = 20
     app.numAI = 0
     app.totWidth = 0
     app.incWidth = 0
+    app.player = Car(app.carWidth, [app.carX, app.carY])
+    app.ai = AICar(app.carWidth, [app.carX - 30, app.carY])
+    app.testTrack = genStraightTrack(app)
+    app.tracks = []
+    app.tempTrack = []
+    app.track = Track(app, "test", "blue", "light blue", app.testTrack, 200)
 
 def mousePressed(app, event):
     x, y = event.x, event.y
@@ -275,8 +316,6 @@ def drawStartScreen(app, canvas):
     canvas.create_rectangle(0, 0, app.width,
                      app.height, fill='black')
     canvas.create_text(app.width/2, app.height/2,text="Hello", fill='red')
-
-
 
 runApp(width=800, height=600, title="Rowdy Racers")
 

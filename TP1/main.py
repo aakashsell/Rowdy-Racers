@@ -180,18 +180,7 @@ class Track():
                 i += 2
             return newCoords
         return coords
-
-    def obstacle(self, app):
-        pass
     
-    def getCenterForY(self, app, y):
-        i = 1
-        while i < len(self.coords):
-            if abs(self.coords[i] - y) < 0.5:
-                return coords[i-1]
-            i += 2
-        pass
-
     def end(self, app):
         if self.coords[1] > app.height/3:
             return True
@@ -199,7 +188,6 @@ class Track():
             return False
 
     def generate(self, list):
-        tempCoords = []
         pass
 
     def moveCoords(self, app):
@@ -208,16 +196,12 @@ class Track():
             self.coords[i] += app.scrollY
             i += 2
 
-    def drawObstacle(self, app, canvas):
-        pass
-
     def draw(self, app, canvas):
         canvas.create_rectangle(0, app.height - self.length + app.scrollY,
                                  app.width, app.height, 
                                 fill= self.background)
         canvas.create_line(self.coords, width=self.width)
         canvas.create_line(self.coords, fill="yellow", dash=(5,5), width=self.width/50)
-        self.drawObstacle(app, canvas)
 
 def gameMode_redrawAll(app, canvas):
     app.track.draw(app, canvas)

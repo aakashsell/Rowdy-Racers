@@ -210,6 +210,7 @@ class Track():
         self.background = background_color
         self.length = len(inputCoords)
         self.width = width
+        self.obstacles = []
         if len(inputCoords) > 2:
             self.coords = inputCoords
         else:
@@ -245,6 +246,7 @@ class Track():
         return coords
 
     def obstacle(self, app):
+        
         pass
     
     def getCenterForY(self, app, y):
@@ -284,6 +286,34 @@ class Track():
         canvas.create_line(self.coords, width=self.width)
         canvas.create_line(self.coords, fill="yellow", dash=(5,5), width=self.width/50)
         self.drawObstacle(app, canvas)
+    
+def genNextPoint(app):
+    app.track.coords.pop(0)
+    app.track.coords.pop(1)
+    tempX = app.track.coords[0]
+    app.track.coords.insert(0, app.height)
+    app.track.coords.insert(0, tempX)
+    run = True
+    startX = app.track.coords[len(app.track.coords) - 2]
+    startY = app.track.coords[len(app.track.coords) - 1]
+    while run:
+        direction = random.randint(0,1)
+        length = random.randint(1,10)
+        length = 80 * length
+        angle = random.randint(5,10)
+        angle = angle * 4
+        angle = math.radians(angle)
+        xChange = length * math.cos(angle)
+        yChange = length * abs(math.sin(angle))
+        if direction == 0:
+            xChange = 0 - xChange
+        newX = startX + xChange
+        newY = startY - yChange 
+        if (newX > 0 + 100 and newX < app.width - 100 
+            and newY > 0 and newY < app.height):
+            app.track.coords.append(newX)
+            app.track.coords.append(newY)
+            run = False
 
 def generateTrack(app):
     run = True
@@ -357,15 +387,18 @@ def movingMod(app):
         app.ai.speedMod = aiSpeed - pSpeed
 
 def gameMode_timerFired(app):
-    if app.track.coords == app.track.ogCoords:
+    if len(app.tempTrack) > 2:
+        app.track = Track(app, "test", "blue", "light blue", app.tempTrack, 200)
         app.track.coords = app.track.convertCoords(app, app.track.ogCoords)
+    if app.track.coords[len(app.track.coords) - 1] > 20 and app.infinite:
+        genNextPoint(app)
     movingMod(app)
     app.ai.race(app)
     app.player.move(20, app, None)
     app.ai.move(20, app, None)
     app.track.moveCoords(app)
     if not app.track.end(app):
-        app.scrollY += 10
+        app.scrollY += 5
     else:
         app.scrollY = 0
         gameFinish(app)

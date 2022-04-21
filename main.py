@@ -68,19 +68,13 @@ def endGameConditions(app):
     return False
 
 def checkCarCollions(app):
-    playerCoords = app.player.getCoords()
-    aiCoords = app.ai.getCoords()
-    # top left, top right, bootom right, bottom left
-    #Check if a point of the player is in the ai
-    if app.player.x > app.ai.x:
-        right = app.player
-        left = app.ai
-    else:
-        right = app.ai
-        left = app.player
-    for coord in playerCoords:
-        pass
-    pass
+    xDiff = abs(app.player.x - app.ai.x)
+    yDiff = abs(app.player.y - app.ai.y)
+    distance = ((xDiff ** 2) + (yDiff ** 2))**.5
+    if distance < app.player.width:
+        print("crash")
+        return True
+    return False
 
 def checkWins(app):
     if app.ai.y < app.player.y:
@@ -120,11 +114,11 @@ class Car:
     
     def checkOnRoad(self, app):
         xCenter = app.track.getCenterForY(app, self.y)
-        radius = app.track.width / 2
+        radius = app.track.width/2
         leftBound = xCenter - radius
         rightBound = xCenter + radius
         if self.x > rightBound or self.x < leftBound:
-                app.player.y += 10
+                self.y += 10
                 return False
         return True
 
@@ -197,13 +191,11 @@ class AICar(Car):
         trackCenter = app.track.getCenterForY(app, self.y)
         distanceCenter = abs(trackCenter - self.x)
         if self.x != trackCenter:
-            self.x = trackCenter
-            # if self.x < trackCenter:
-            #     self.x += 5
-            #     # self.rotate(-distanceCenter * .2)
-            # else:
-            #     self.x -= 10
-            #     # self.rotate(distanceCenter * .2)
+            # self.x = trackCenter
+            if self.x < trackCenter and self.angle > -90:
+                self.rotate(-distanceCenter * .2)
+            elif self.x > trackCenter and self.angle < 90:
+                self.rotate(distanceCenter * .2)
 
     def draw(self, canvas):
         top_left = self.coords[0]
@@ -256,9 +248,6 @@ class Track():
                 i += 2
             return newCoords
         return coords
-
-    def obstacle(self, app):
-        pass
     
     def getCenterForY(self, app, y):
         i = 1
@@ -288,8 +277,15 @@ class Track():
             i += 2
 
     def drawObstacle(self, app, canvas):
-        num = random.randint(0, 10)
-        
+        i = 4
+        while i < len(self.obstacles): 
+            xDiff = random.randint(-4,4)
+            xDiff *= 100
+            oX = self.coords[i]
+            oY = self.coords[i+1]
+            canvas.create_oval(oX - 10, oY - 10, oX + 10, oY + 10,
+                            fill="red")
+            i += 2
         pass
 
     def draw(self, app, canvas):
@@ -314,8 +310,8 @@ def genNextPoint(app):
             direction = 1
         length = random.randint(1,30)
         length = 20 * length
-        angle = random.randint(1, 15)
-        angle = angle * 8
+        angle = random.randint(10, 15)
+        angle = angle * 4
         angle = math.radians(angle)
         xChange = length * math.cos(angle)
         yChange = length * abs(math.sin(angle))
@@ -342,7 +338,7 @@ def generateTrack(app):
         direction = random.randint(0,1)
         length = random.randint(1,10)
         length = 80 * length
-        angle = random.randint(1,15)
+        angle = random.randint(10,15)
         angle = angle * 4
         angle = math.radians(angle)
         xChange = length * math.cos(angle)
@@ -424,23 +420,32 @@ def checkEnd(app):
         app.winner = "player" 
         gameFinish(app)
 
+def playerGenX(app):
+    if not app.infinite:
+        centerX = app.track.getCenterForY(app, app.height/2)
+        app.player = Car(app, app.carWidth, [centerX, app.carY])
+        app.ai = AICar(app, app.carWidth, [centerX - 30, app.carY])
+
 def gameMode_timerFired(app):
+    if app.centerCarCount < 1:
+        playerGenX(app)
+        app.centerCarCount = 1
     if len(app.tempTrack) > 2:
         app.track = Track(app, "test", "blue", "light blue", app.tempTrack, 200)
         app.track.coords = app.track.convertCoords(app, app.track.ogCoords)
         app.infinite = False
     if app.track.coords[len(app.track.coords) - 1] > -100 and app.infinite:
         genNextPoint(app)
-    movingMod(app)
+    # movingMod(app)
     app.ai.race(app)
-    app.player.move(20, app, None)
-    app.ai.move(20, app, None)
+    app.player.move(40, app, None)
+    app.ai.move(40, app, None)
     app.track.moveCoords(app)
     checkEnd(app)
     if not app.track.end(app) and app.infinite:
         app.scrollY += 0.1
     elif not app.track.end(app):
-        app.scrollY += 5
+        app.scrollY += 4
     else:
         app.scrollY = 0
         gameFinish(app)
@@ -542,6 +547,8 @@ def appStarted(app):
     app.ai = AICar(app, app.carWidth, [app.carX - 30, app.carY])
     app.finish = False
     app.infinite = True
+    app.centerCarCount = 0
+    app.obstacleCount = 0
     app.winner = ""
 
 def drawStartScreen(app, canvas):

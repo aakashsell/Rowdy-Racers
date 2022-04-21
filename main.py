@@ -225,7 +225,6 @@ class Track():
         else:
             self.coords = generateTrack(app)
             app.infinite = True
-            print("works")
         pass
 
     def reset(self, app):
@@ -256,15 +255,21 @@ class Track():
         return coords
 
     def obstacle(self, app):
-        
         pass
     
     def getCenterForY(self, app, y):
         i = 1
         while i < len(self.coords):
-            if abs(self.coords[i] - y) < 0.5:
-                return self.coords[i-1]
-            i += 2
+            if self.coords[i] > y > self.coords[i+2]:
+                diff = abs(y - self.coords[i])
+                prop = diff / abs(self.coords[i] - self.coords[i+2])
+                length = abs(self.coords[i-1] - self.coords[i+1])
+                away = prop * length
+                if self.coords[i-1] > self.coords[i+1]:
+                    return self.coords[i-1] + away
+                else:
+                    return self.coords[i-1] - away
+            i += 4
         return app.width / 2
 
     def end(self, app):
@@ -362,11 +367,13 @@ def generateTrack(app):
                 startY = track[len(track) - 1]
     return track
 
-def drawFinish(app, canvas, winner):
-    app.showMessage(f"{winner} wins!")
+def drawFinish(app, canvas):
+    if app.track.end(app):
+        app.showMessage(f"{app.winner} wins!")
     pass
 
 def gameMode_redrawAll(app, canvas):
+    drawFinish(app, canvas)
     app.track.draw(app, canvas)
     app.player.draw(canvas)
     app.ai.draw(canvas)
@@ -523,6 +530,7 @@ def appStarted(app):
     app.ai = AICar(app, app.carWidth, [app.carX - 30, app.carY])
     app.finish = False
     app.infinite = True
+    app.winnder = ""
 
 def drawStartScreen(app, canvas):
     canvas.create_rectangle(0, 0, app.width,

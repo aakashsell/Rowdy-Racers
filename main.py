@@ -62,6 +62,11 @@ def resetGame(app):
     app.scrollY = 0
     app.finish = False
 
+def endGameConditions(app):
+    if not(app.player.onScreen(app) or app.ai.onScreen(app)):
+        return True
+    return False
+
 def checkCarCollions(app):
     playerCoords = app.player.getCoords()
     aiCoords = app.ai.getCoords()
@@ -103,6 +108,11 @@ class Car:
         self.speedMod = 0
         self.xSpeed = 0
 
+    def onScreen(self, app):
+        if (self.x > app.width or self.x < 0 or app.y < 0 or app.y > app.height):
+            return False
+        return True
+
     def boost(self, app):
         if self.boosts > 0:
             self.move(20, app, "all")
@@ -113,8 +123,7 @@ class Car:
         radius = app.track.width / 2
         leftBound = xCenter - radius
         rightBound = xCenter + radius
-        for x in self.getCoords():
-            if x[0] < leftBound or x[0] > rightBound:
+        if self.x > rightBound or self.x < leftBound:
                 app.player.y += 10
                 return False
         return True
@@ -215,6 +224,7 @@ class Track():
             self.coords = inputCoords
         else:
             self.coords = generateTrack(app)
+            app.infinite = True
             print("works")
         pass
 
@@ -252,7 +262,7 @@ class Track():
     def getCenterForY(self, app, y):
         i = 1
         while i < len(self.coords):
-            if abs(self.coords[i] - y) < 0.5 and self.coords[i] > 0:
+            if abs(self.coords[i] - y) < 0.5:
                 return self.coords[i-1]
             i += 2
         return app.width / 2
@@ -263,16 +273,11 @@ class Track():
         else:
             return False
 
-    def generate(self, list):
-        tempCoords = []
-        pass
-
     def moveCoords(self, app):
         i = 1
         while i < len(self.coords):
             self.coords[i] += app.scrollY
             i += 2
-
 
     def drawObstacle(self, app, canvas):
         num = random.randint(0, 10)
@@ -288,20 +293,21 @@ class Track():
         self.drawObstacle(app, canvas)
     
 def genNextPoint(app):
-    app.track.coords.pop(0)
-    app.track.coords.pop(1)
-    tempX = app.track.coords[0]
-    app.track.coords.insert(0, app.height)
-    app.track.coords.insert(0, tempX)
-    run = True
+    if app.track.coords[3] >= app.height:
+        app.track.coords.pop(0)
+        app.track.coords.pop(0)
     startX = app.track.coords[len(app.track.coords) - 2]
     startY = app.track.coords[len(app.track.coords) - 1]
+    run = True
+    count = 0
     while run:
-        direction = random.randint(0,1)
-        length = random.randint(1,10)
-        length = 80 * length
-        angle = random.randint(5,10)
-        angle = angle * 4
+        direction = 0
+        if startX < app.width/2:
+            direction = 1
+        length = random.randint(1,30)
+        length = 20 * length
+        angle = random.randint(1, 15)
+        angle = angle * 8
         angle = math.radians(angle)
         xChange = length * math.cos(angle)
         yChange = length * abs(math.sin(angle))
@@ -309,22 +315,26 @@ def genNextPoint(app):
             xChange = 0 - xChange
         newX = startX + xChange
         newY = startY - yChange 
-        if (newX > 0 + 100 and newX < app.width - 100 
-            and newY > 0 and newY < app.height):
+        if (newX > 100 and newX < app.width - 100 
+            and newY < 0):
             app.track.coords.append(newX)
             app.track.coords.append(newY)
             run = False
+        
 
 def generateTrack(app):
     run = True
+    track = [app.width/2, app.height]
     startX = app.width/2
-    startY = app.height
-    track = [startX, startY]
+    startY = app.height/2
+    track.append(startX)
+    track.append(startY)
+    count = 0 
     while run:
         direction = random.randint(0,1)
         length = random.randint(1,10)
         length = 80 * length
-        angle = random.randint(8,15)
+        angle = random.randint(1,15)
         angle = angle * 4
         angle = math.radians(angle)
         xChange = length * math.cos(angle)
@@ -332,7 +342,7 @@ def generateTrack(app):
         if direction == 0:
             xChange = 0 - xChange
         newX = startX + xChange
-        newY = startY - yChange 
+        newY = startY - yChange
         if (newX > 0 + 100 and newX < app.width - 100 
             and newY > 0 and newY < app.height):
             track.append(newX)
@@ -341,9 +351,19 @@ def generateTrack(app):
             startY = newY
             if newY < 10:
                 run = False
+        else:
+            count += 1
+        if count == 3:
+            count = 0
+            if len(track) > 4:
+                track.pop()
+                track.pop()
+                startX = track[len(track) - 2]
+                startY = track[len(track) - 1]
     return track
 
 def drawFinish(app, canvas, winner):
+    app.showMessage(f"{winner} wins!")
     pass
 
 def gameMode_redrawAll(app, canvas):
@@ -390,14 +410,17 @@ def gameMode_timerFired(app):
     if len(app.tempTrack) > 2:
         app.track = Track(app, "test", "blue", "light blue", app.tempTrack, 200)
         app.track.coords = app.track.convertCoords(app, app.track.ogCoords)
-    if app.track.coords[len(app.track.coords) - 1] > 20 and app.infinite:
+        app.infinite = False
+    if app.track.coords[len(app.track.coords) - 1] > -100 and app.infinite:
         genNextPoint(app)
     movingMod(app)
     app.ai.race(app)
     app.player.move(20, app, None)
     app.ai.move(20, app, None)
     app.track.moveCoords(app)
-    if not app.track.end(app):
+    if not app.track.end(app) and app.infinite:
+        app.scrollY += 0.1
+    elif not app.track.end(app):
         app.scrollY += 5
     else:
         app.scrollY = 0
@@ -442,6 +465,7 @@ def courseBuilderMode_mousePressed(app, event):
         if checkErrors(app):     
             app.tempTrack = []
             app.message = 'This track is invalid, try again'
+            app.showMessage(app.message)
 
 def courseBuilderMode_keyPressed(app, event):
     universalCommands(app, event)
@@ -498,7 +522,7 @@ def appStarted(app):
     app.player = Car(app, app.carWidth, [app.carX, app.carY])
     app.ai = AICar(app, app.carWidth, [app.carX - 30, app.carY])
     app.finish = False
-    app.infinite = False
+    app.infinite = True
 
 def drawStartScreen(app, canvas):
     canvas.create_rectangle(0, 0, app.width,

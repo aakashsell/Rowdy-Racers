@@ -197,10 +197,13 @@ class AICar(Car):
         trackCenter = app.track.getCenterForY(app, self.y)
         distanceCenter = abs(trackCenter - self.x)
         if self.x != trackCenter:
-            if self.x < trackCenter:
-                self.rotate(-distanceCenter * .2)
-            else:
-                self.rotate(distanceCenter * .2)
+            self.x = trackCenter
+            # if self.x < trackCenter:
+            #     self.x += 5
+            #     # self.rotate(-distanceCenter * .2)
+            # else:
+            #     self.x -= 10
+            #     # self.rotate(distanceCenter * .2)
 
     def draw(self, canvas):
         top_left = self.coords[0]
@@ -266,10 +269,10 @@ class Track():
                 length = abs(self.coords[i-1] - self.coords[i+1])
                 away = prop * length
                 if self.coords[i-1] > self.coords[i+1]:
-                    return self.coords[i-1] + away
-                else:
                     return self.coords[i-1] - away
-            i += 4
+                else:
+                    return self.coords[i-1] + away
+            i += 2
         return app.width / 2
 
     def end(self, app):
@@ -368,9 +371,9 @@ def generateTrack(app):
     return track
 
 def drawFinish(app, canvas):
-    if app.track.end(app):
-        app.showMessage(f"{app.winner} wins!")
-    pass
+    if app.winner != "":
+        # app.showMessage(f"{app.winner} wins!")
+        pass
 
 def gameMode_redrawAll(app, canvas):
     drawFinish(app, canvas)
@@ -413,6 +416,14 @@ def movingMod(app):
         app.player.speedMod = pSpeed - aiSpeed
         app.ai.speedMod = aiSpeed - pSpeed
 
+def checkEnd(app):
+    if app.player.y > app.height:
+        app.winner = "ai" 
+        gameFinish(app)
+    elif app.ai.y > app.height:
+        app.winner = "player" 
+        gameFinish(app)
+
 def gameMode_timerFired(app):
     if len(app.tempTrack) > 2:
         app.track = Track(app, "test", "blue", "light blue", app.tempTrack, 200)
@@ -425,6 +436,7 @@ def gameMode_timerFired(app):
     app.player.move(20, app, None)
     app.ai.move(20, app, None)
     app.track.moveCoords(app)
+    checkEnd(app)
     if not app.track.end(app) and app.infinite:
         app.scrollY += 0.1
     elif not app.track.end(app):
@@ -530,7 +542,7 @@ def appStarted(app):
     app.ai = AICar(app, app.carWidth, [app.carX - 30, app.carY])
     app.finish = False
     app.infinite = True
-    app.winnder = ""
+    app.winner = ""
 
 def drawStartScreen(app, canvas):
     canvas.create_rectangle(0, 0, app.width,

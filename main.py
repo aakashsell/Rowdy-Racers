@@ -32,6 +32,9 @@ def startScreenMode_keyPressed(app, event):
         app.mode = "gameMode"
     if event.key.lower() == "b":
         app.mode = "courseBuilderMode"
+    if event.key.lower() == "2":
+        app.players = 2
+        app.mode = "gameMode"
 
 def startScreenMode_mousePressed(app, event):
     print(f"{event.x}, {event.y}")
@@ -119,11 +122,20 @@ class Car:
         rightBound = xCenter + radius
         if self.x > rightBound or self.x < leftBound:
                 self.y += 10
-                return False
-        return True
+
+    def checkHitObstacle(self, app):
+        i = 0
+        while i < len(app.track.coords):
+            xDiff = app.track.coords[i] - self.x
+            yDiff = app.track.coords[i+1] - self.y
+            distance = ((xDiff**2) + (yDiff**2))**.5
+            if distance < 20:   
+                self.y += 10
+            i+=2
 
     def physics(self, app):
         self.checkOnRoad(app)
+        self.checkHitObstacle(app)
 
     def getCoords(self):
         top_left = [self.x - self.width, self.y - self.height]
@@ -205,6 +217,8 @@ class AICar(Car):
         canvas.create_polygon(top_left[0], top_left[1], top_right[0], top_right[1],
                             bottom_right[0], bottom_right[1], 
                             bottom_left[0], bottom_left[1], fill=self.color)
+        canvas.create_oval(self.x - 2, self.y - 2, self.x + 2, self.y + 2,
+                            fill="black")
     
 class Track():
     def __init__(self, app, type, road_color, background_color, inputCoords, width):
@@ -392,11 +406,11 @@ def gameMode_keyPressed(app, event):
     if app.players > 1:
         if event.key.lower() == "d":
             app.ai.rotate(-15)
-        if event.keylower() == "a":
+        if event.key.lower() == "a":
             app.ai.rotate(15)
-        if event.keylower() == "w":
+        if event.key.lower() == "w":
             app.ai.move(20, app, "all")
-        if event.keylower() == "s":
+        if event.key.lower() == "s":
             app.ai.move(-20, app, "all")
 
 def gameFinish(app):
@@ -415,10 +429,8 @@ def movingMod(app):
 def checkEnd(app):
     if app.player.y > app.height:
         app.winner = "ai" 
-        gameFinish(app)
     elif app.ai.y > app.height:
         app.winner = "player" 
-        gameFinish(app)
 
 def playerGenX(app):
     if not app.infinite:
@@ -437,7 +449,8 @@ def gameMode_timerFired(app):
     if app.track.coords[len(app.track.coords) - 1] > -100 and app.infinite:
         genNextPoint(app)
     # movingMod(app)
-    app.ai.race(app)
+    if app.players == 1:
+        app.ai.race(app)
     app.player.move(40, app, None)
     app.ai.move(40, app, None)
     app.track.moveCoords(app)

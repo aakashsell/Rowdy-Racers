@@ -5,36 +5,10 @@
 # Your andrew id: asell
 #################################################
 
+from http.cookiejar import FileCookieJar
 from cmu_112_graphics import *
 import math, copy, os, random
 import pygame #Used for Sound
-
-##########################################
-# Start Screen Mode
-# Taken from 112 lecture notes
-##########################################
-
-class Sound(object):
-    def __init__(self, path):
-        self.path = path
-        self.loops = 1
-        pygame.mixer.music.load(path)
-
-    # Returns True if the sound is currently playing
-    def isPlaying(self):
-        return bool(pygame.mixer.music.get_busy())
-
-    # Loops = number of times to loop the sound.
-    # If loops = 1 or 1, play it once.
-    # If loops > 1, play it loops + 1 times.
-    # If loops = -1, loop forever.
-    def start(self, loops=-1):
-        self.loops = loops
-        pygame.mixer.music.play(loops=loops)
-
-    # Stops the current sound from playing
-    def stop(self):
-        pygame.mixer.music.stop()
 
 ##########################################
 # Start Screen Mode
@@ -73,15 +47,6 @@ def startScreenMode_mousePressed(app, event):
     pass
 
 def startScreenMode_timerFired(app):
-    try:
-        if not app.sound.isPlaying():
-            pygame.mixer.init()
-            app.sound = Sound('splash.mp3')
-            app.sound.start()
-    except:
-        pygame.mixer.init()
-        app.sound = Sound('splash.mp3')
-        app.sound.start()
     resetGame(app)
 
 ##########################################
@@ -349,6 +314,7 @@ def genNextPoint(app):
     startX = app.track.coords[len(app.track.coords) - 2]
     startY = app.track.coords[len(app.track.coords) - 1]
     run = True
+    count = 0
     while run:
         direction = 0
         if startX < app.width/2:
@@ -411,10 +377,18 @@ def generateTrack(app):
                 startY = track[len(track) - 1]
     return track
 
+def drawFinish(app, canvas):
+    if app.winner != "":
+        # app.showMessage(f"{app.winner} wins!")
+        pass
+
 def gameMode_redrawAll(app, canvas):
+    drawFinish(app, canvas)
     app.track.draw(app, canvas)
     app.player.draw(canvas)
     app.ai.draw(canvas)
+    if app.finish:
+        drawFinish(app, canvas, checkWins(app))
 
 def gameMode_keyPressed(app, event):
     universalCommands(app, event)
@@ -451,13 +425,9 @@ def movingMod(app):
 
 def checkEnd(app):
     if app.player.y > app.height:
-        app.winner = "AI" 
+        app.winner = "ai" 
     elif app.ai.y > app.height:
-        app.winner = "Player" 
-    if app.winner != "":
-        app.showMessage(f"{app.winner} wins!")
-        app.winner = ""
-        app.mode = 'startScreenMode'
+        app.winner = "player" 
 
 def playerGenX(app):
     if not app.infinite:
@@ -475,7 +445,7 @@ def gameMode_timerFired(app):
         app.infinite = False
     if app.track.coords[len(app.track.coords) - 1] > -100 and app.infinite:
         genNextPoint(app)
-    movingMod(app)
+    # movingMod(app)
     if app.players == 1:
         app.ai.race(app)
     app.player.move(40, app, None)
@@ -590,7 +560,6 @@ def appStarted(app):
     app.centerCarCount = 0
     app.obstacleCount = 0
     app.winner = ""
-    app.startSoundRunning = 0
 
 def drawStartScreen(app, canvas):
     canvas.create_rectangle(0, 0, app.width,

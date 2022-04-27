@@ -1,17 +1,20 @@
 #################################################
 # Term Project - Main Function
 #
+# This is the main file for the project and all of the code is in here.
+#
 # Your name: Aakash Sell
 # Your andrew id: asell
 #################################################
 
 from cmu_112_graphics import *
-import math, copy, os, random
+import math, random
 import pygame #Used for Sound
 
 ##########################################
 # Start Screen Mode
 # Taken from 112 lecture notes
+# Free Music From Youtube: https://www.youtube.com/watch?v=o4PioBdZppc
 ##########################################
 
 class Sound(object):
@@ -38,6 +41,8 @@ class Sound(object):
 
 ##########################################
 # Start Screen Mode
+# This screen is the heart of the game and directs the user to 
+# other parts of the game.
 ##########################################
 
 def startScreenMode_redrawAll(app, canvas):
@@ -50,8 +55,16 @@ def startScreenMode_redrawAll(app, canvas):
     canvas.create_rectangle(app.width/2 + 100, app.height*(3/4) + 50,
                             app.width/2 - 100, app.height*(3/4) - 50,
                             fill='orange')
+    canvas.create_rectangle(app.width*(2/3) + 25, app.height*(2/4) + 25,
+                            app.width*(2/3) - 25, app.height*(2/4) - 25,
+                            fill='blue')        
+    canvas.create_rectangle(app.width*(9/10) + 25, app.height*(9/10) + 25,
+                            app.width*(9/10) - 25, app.height*(9/10) - 25,
+                            fill='yellow')
     canvas.create_text(app.width/2, app.height*(2/4), text='Start (s)', fill='black')
+    canvas.create_text(app.width*(2/3), app.height*(2/4), text='2P', fill='black')
     canvas.create_text(app.width/2, app.height*(3/4), text='Build (b)', fill='black')
+    canvas.create_text(app.width*(9/10), app.height*(9/10), text='I', fill='black')
 
 def startScreenMode_keyPressed(app, event):
     if event.key.lower() == "s":
@@ -61,15 +74,24 @@ def startScreenMode_keyPressed(app, event):
     if event.key.lower() == "2":
         app.players = 2
         app.mode = "gameMode"
+    if event.key.lower() == "i":
+        app.mode = "instructionsMode"
 
 def startScreenMode_mousePressed(app, event):
-    print(f"{event.x}, {event.y}")
     if (event.x > app.width/2 - 100 and event.x < app.width/2 + 100 and
         event.y > app.height*(2/4) - 50 and event.y < app.height*(2/4) + 50):
+        app.players = 1
         app.mode = 'gameMode'
     if (event.x > app.width/2 - 100 and event.x < app.width/2 + 100 and
         event.y > app.height*(3/4) - 50 and event.y < app.height*(3/4) + 50):
         app.mode = 'courseBuilderMode'
+    if (event.x > app.width*(2/3) - 25 and event.x < app.width*(2/3) + 25 and
+        event.y > app.height*(2/4) - 25 and event.y < app.height*(2/4) + 25):
+        app.players = 2
+        app.mode = 'gameMode'
+    if (event.x > app.width*(9/10) - 25 and event.x < app.width*(9/10) + 25 and
+        event.y > app.height*(9/10) - 25 and event.y < app.height*(9/10) + 25):
+        app.mode = 'instructionsMode'
     pass
 
 def startScreenMode_timerFired(app):
@@ -86,12 +108,37 @@ def startScreenMode_timerFired(app):
 
 ##########################################
 # Instructions Mode
+# This screen is just text that explains to the user how to play the game.
 ##########################################
 
+def instructionsMode_redrawAll(app, canvas):
+    canvas.create_rectangle(0, 0, app.width, app.height, fill='yellow')
+    instructionsText = ["To play rowdy racers, you just need to press start.",
+                        "This will have you play against Ai on an infite randomly generated track.",
+                        "To activate 2 player mode just press the 2 key and the second player can use wasd.",
+                        "You can also draw your own map and play on that."
+                        " Press p at any time to go back to the main screen."]
+    canvas.create_text(app.width/2, app.height*(1/5), text=instructionsText[0], fill='black')
+    canvas.create_text(app.width/2, app.height*(2/5), text=instructionsText[1], fill='black')
+    canvas.create_text(app.width/2, app.height*(3/5), text=instructionsText[2], fill='black')
+    canvas.create_text(app.width/2, app.height*(4/5), text=instructionsText[3], fill='black')
+    canvas.create_rectangle(app.width*(1/10) + 50, app.height*(1/10) + 25,
+                            app.width*(1/10) - 50, app.height*(1/10) - 25,
+                            fill='green')
+    canvas.create_text(app.width*(1/10), app.height*(1/10), text="Back", fill='black')
 
+def instructionsMode_keyPressed(app, event):
+    if event.key.lower() == "p":
+        app.mode = "startScreenMode"
+
+def instructionsMode_mousePressed(app, event):
+    if (event.x > app.width*(1/10) - 50 and event.x < app.width*(1/10) + 50 and
+        event.y > app.height*(1/10) - 25 and event.y < app.height*(1/10) + 25):
+        app.mode = 'startScreenMode'
 
 ##########################################
 # Game Mode
+# This screen actually runs the game and contains all of the game mechanics.
 ##########################################
 
 def resetGame(app):
@@ -238,7 +285,6 @@ class AICar(Car):
         trackCenter = app.track.getCenterForY(app, self.y)
         distanceCenter = abs(trackCenter - self.x)
         if self.x != trackCenter:
-            # self.x = trackCenter
             if self.x < trackCenter and self.angle > -90:
                 self.rotate(-distanceCenter * .2)
             elif self.x > trackCenter and self.angle < 90:
@@ -343,6 +389,8 @@ class Track():
         self.drawObstacle(app, canvas)
     
 def genNextPoint(app):
+    # Used drunk man's walk algorithm
+    # Inspired by this article : https://medium.com/i-math/the-drunkards-walk-explained-48a0205d304
     if app.track.coords[3] >= app.height:
         app.track.coords.pop(0)
         app.track.coords.pop(0)
@@ -372,6 +420,8 @@ def genNextPoint(app):
         
 
 def generateTrack(app):
+    # Used drunk man's walk algorithm
+    # Inspired by this article : https://medium.com/i-math/the-drunkards-walk-explained-48a0205d304
     run = True
     track = [app.width/2, app.height]
     startX = app.width/2
@@ -458,16 +508,12 @@ def checkEnd(app):
         app.showMessage(f"{app.winner} wins!")
         app.winner = ""
         app.mode = 'startScreenMode'
-
-def playerGenX(app):
-    if not app.infinite:
-        centerX = app.track.getCenterForY(app, app.height/2)
-        app.player = Car(app, app.carWidth, [centerX, app.carY])
-        app.ai = AICar(app, app.carWidth, [centerX - 30, app.carY])
+    
 
 def gameMode_timerFired(app):
-    if app.centerCarCount < 1:
-        playerGenX(app)
+    if app.infinite == False and app.centerCarCount == 0:
+        app.player.x = app.track.getCenterForY(app, app.height/2)
+        app.ai.x = app.track.getCenterForY(app, app.height/2)
         app.centerCarCount = 1
     if len(app.tempTrack) > 2:
         app.track = Track(app, "test", "blue", "light blue", app.tempTrack, 200)
@@ -496,6 +542,7 @@ def gameMode_timerFired(app):
         
 ##########################################
 # Course Builder
+# This screen allows a player to build a track.
 ##########################################
 
 def checkErrors(app):
@@ -519,6 +566,10 @@ def courseBuilderMode_redrawAll(app, canvas):
         if len(app.tempTrack) > 3:
             canvas.create_line(app.tempTrack, width=app.tempLineWidth)
             canvas.create_line(app.tempTrack, fill="yellow")
+    canvas.create_rectangle(app.width*(1/10) + 50, app.height*(1/10) + 25,
+                            app.width*(1/10) - 50, app.height*(1/10) - 25,
+                            fill='blue')
+    canvas.create_text(app.width*(1/10), app.height*(1/10), text="Back", fill='black')
 
 def courseBuilderMode_mousePressed(app, event):
     if (event.x > app.width/2 - app.incWidth and
@@ -530,6 +581,9 @@ def courseBuilderMode_mousePressed(app, event):
             app.tempTrack = []
             app.message = 'This track is invalid, try again'
             app.showMessage(app.message)
+    if (event.x > app.width*(1/10) - 50 and event.x < app.width*(1/10) + 50 and
+        event.y > app.height*(1/10) - 25 and event.y < app.height*(1/10) + 25):
+        app.mode = 'startScreenMode'
 
 def courseBuilderMode_keyPressed(app, event):
     universalCommands(app, event)
@@ -549,6 +603,7 @@ def courseBuilderMode_timerFired(app):
 
 ##########################################
 # Main App
+# This is where all of the global variables are created and where the app is run from.
 ##########################################
 
 def genStraightTrack(app):
@@ -591,6 +646,7 @@ def appStarted(app):
     app.obstacleCount = 0
     app.winner = ""
     app.startSoundRunning = 0
+    app.centerCarCount = 0
 
 def drawStartScreen(app, canvas):
     canvas.create_rectangle(0, 0, app.width,
